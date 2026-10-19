@@ -99,3 +99,15 @@ Brave хайлт нь бүтэн пост, Facebook author болон group name
 ## Интерфэйс v0.8
 
 Нэгдсэн navy/cobalt design: desktop sidebar, responsive доод mobile navigation, SVG navigation icons, статусын өнгө, уншигдах карт, хоёр түвшний шүүлт, нягт/дэлгэрэнгүй харагдац, responsive login. Товч гар: `/` — хүсэлт хайлт руу, `n` — шинэ хүсэлт, `Ctrl/Cmd+Enter` — нээлттэй форм хадгалах. Input дээр бичиж байхад `/`, `n` shortcut ажиллахгүй. Түргэн шүүлт нь бүх хүсэлт / худалдан авах хүсэлт / хадгалсан / шинэ гэсэн сонголттой. Reduced-motion тохиргоог хүндэтгэнэ. Харагдах байдлыг бодит браузерт баталгаажуулаагүй.
+
+## Шууд шинэчлэлт, тайлан, өөрчлөлтийн түүх (v0.9)
+
+- Authenticated `/api/events` нь SSE/EventSource-оор revision болон хайлтын явцын жижиг notification илгээнэ. Facebook token, постын бүтэн текстийг stream-ээр дамжуулахгүй. Хөтөч шаардлагатай өгөгдлөө authenticated API-аас дахин авна. Хайлтын явц SSE ажиллаж байх үед polling хийхгүй; тасарвал polling руу буцна.
+- Текст засаж буй форм эсвэл нээлттэй lead dialog байхад шинэ revision автоматаар дээрээс нь дарж орохгүй. Шинэчлэл байгаа тухай сануулж, хадгалах үед revision conflict-ийг хянана. Form-оос гарах / хуудсыг хаахад хадгалаагүй өөрчлөлтийн сануулга гарна.
+- SQLite WAL болон 5 секундийн busy timeout. Нэг replica, persistent volume-ийн шаардлага хэвээр; энэ нь олон серверийн distributed database биш.
+- Серверийн activity хүснэгт lead үүсгэлт, устгал, өөрчлөгдсөн талбарын нэр, төлөв, actor, цагийг state-тэй нэг transaction дотор хадгална. Notes/body/replyDraft-ийн хуучин болон шинэ текстийг audit-д давхар хадгалахгүй. Сүүлийн 20000 event хадгална; энэ нь tamper-proof compliance audit биш. `/api/activity?lead=<id>&before=<cursor>&limit=30`-оор уншина.
+- `/api/insights`: архивлаагүй lead-ийн эх сурвалж, хүсэлтийн төрөл, борлуулалтын төлөв, дүн, хувийн тооцоо. Хугацааны тооцоо Asia/Ulaanbaatar. Орлого нь гараар бүртгэсэн дүн; төлбөрийн баталгаажуулалт биш.
+- SSE холболтын дээд хязгаар 30; 20 секунд тутам heartbeat-аар нэвтрэх эрхийг дахин шалгана. Session дууссан / logout хийсэн / Facebook allowlist-ээс хассан тохиолдолд stream хаагдана. Серверийн env-ийн allowlist өөрчилсөн бол redeploy/restart шаардлагатай. Одоогийн нээлттэй session ч дараагийн API хүсэлт дээр allowlist шалгуулна.
+- JSON backup-д үндсэн workspace орно; activity/session хүснэгт орохгүй. Бүрэн сэргээхэд SQLite volume-ийн тусдаа нөөц шаардлагатай.
+
+Нэмсэн тестүүд: audit diff болон хувийн текстийн хамгаалалт, Улаанбаатарын өдрийн зааг, эх сурвалжийн тооцоо, SSE capacity/cleanup/revocation, activity API actor, allowlist-аас хассан session.
