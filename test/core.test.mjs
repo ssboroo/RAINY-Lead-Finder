@@ -1,0 +1,4 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {facebookURL,postURL,qualify,validState} from '../core.mjs';
+test('reject deceptive domains and canonicalize tracking',()=>{assert.equal(facebookURL('https://facebook.com.evil.test/posts/1'),null);assert.equal(facebookURL('javascript:alert(1)'),null);assert.equal(postURL('https://www.facebook.com/groups/1/posts/2/?utm_source=x'),'https://www.facebook.com/groups/1/posts/2');assert.equal(postURL('https://facebook.com/groups/1'),null)});
+test('exclusion dominates matches and identifies buying intent',()=>{assert.equal(qualify('Сайт хийлгэнэ',['сайт'],[]).intent,true);assert.equal(qualify('Сайт хийлгэнэ ажил хайж байна',['сайт'],['ажил хайж']).score,0)});
+test('invalid imported state is rejected',()=>{assert.equal(!!validState({leads:[]}),false)});
