@@ -1,1 +1,13 @@
-{"name":"rainy-lead-finder","version":"0.2.0","private":true,"type":"module","scripts":{"start":"node --env-file-if-exists=.env server.mjs","test":"node --test"},"engines":{"node":">=24"}}
+{
+  "name": "rainy-lead-finder",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
