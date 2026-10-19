@@ -40,3 +40,23 @@ Brave API: https://api-dashboard.search.brave.com/app/documentation/web-search/g
 ## CRM ажлын урсгал
 
 Тойм самбар дээр идэвхтэй хүсэлт, хугацаа болсон ажил, захиалга, бүртгэсэн борлуулалтын дүн харагдана. Хүсэлт бүр дээр эрэмбэ, тэмдэглэл, дараа холбогдох өдөр, боломжит үнийн дүн, архив нэмсэн. Огнооны хяналтыг Asia/Ulaanbaatar бүсээр хийнэ. Борлуулалтын самбарын карт дээр дарж төлөв шинэчилнэ. Олон хүсэлтийг сонгон архивлаж, эрэмбэ/төлөв/текстээр шүүж, CSV экспорт хийж болно. Хайлтын сүүлийн 50 ажиллагааны үр дүн, алдааг хадгална. Хугацаа сануулах нь зөвхөн самбар дээр харагдана; email эсвэл push мэдэгдэл биш.
+
+## Facebook-ээр нэвтрэх
+
+`/login` хуудас дээр Facebook болон админ нэвтрэлттэй. Facebook нэвтрэлт дараах environment тохиргоонууд бүрэн үед идэвхжинэ:
+
+- `PUBLIC_BASE_URL=https://your-domain.example` — path-гүй, яг production origin.
+- `FACEBOOK_APP_ID` болон `FACEBOOK_APP_SECRET` — Meta app-ын утгууд. Secret-ийг зөвхөн серверийн secret variable-д хадгална.
+- `META_GRAPH_VERSION` — тухайн Meta App dashboard-аас одоо дэмжигдэж буй хувилбарыг сонгож `vNN.0` хэлбэрээр өгнө. Жишээн дэх NN нь бодит хувилбар биш.
+- `FACEBOOK_ALLOWED_IDS` — энэ аппын app-scoped Facebook user ID-ууд, таслалаар тусгаарлана. Энэ нь нэг байгууллагын shared workspace тул дурын Facebook хэрэглэгчийг оруулахгүй. ID-г Meta-ийн тухайн app-аар авсан user token-ий `/me` үр дүнгээс админ авна.
+
+Meta Dashboard → тухайн аппын Facebook Login web тохиргоонд **Valid OAuth Redirect URI**-г `https://your-domain.example/auth/facebook/callback` гэж яг тааруулна. App domain болон Website URL-ийг тохируулна. Public profile нэвтрэлт ашиглана; Page удирдах эсвэл comment бичих permission хүсэхгүй. Development горимд аппын зөвшөөрөгдсөн тест хэрэглэгчээр туршина. Нийтэд нээхэд Meta-аас шаардсан app mode, review, privacy/data-deletion нөхцөлүүдийг тухайн dashboard-ын шаардлагаар гүйцээнэ.
+
+Authorization code солилцоо сервер дээр хийгдэнэ. Нэг удаагийн OAuth state, HttpOnly/SameSite cookie, app ID болон user ID token баталгаажуулалт, app-secret proof, ID allowlist, 8 цагийн серверийн session, logout нэмсэн. Facebook access token хадгалахгүй. Нууц үгийн форм rate limit-тэй. Админ `APP_PASSWORD` нөөц нэвтрэлт хэвээр. Basic API auth нийцтэй байдлаар хадгалагдсан; браузерийн форм нь cookie session хэрэглэнэ.
+
+`/privacy`, `/data-deletion` хуудсууд тайлбарын эх загвар агуулна. Нийтэд нээхээс өмнө операторын бодит холбоо барих суваг болон устгалын үйл явцыг гүйцээнэ. `sessions` хүснэгтээс тухайн Facebook ID бүхий session-уудыг админ устгаж хандалтыг цуцална; allowlist-ээс мөн хасна. Апп устгасан Facebook webhook автомат боловсруулах холболт одоогоор байхгүй.
+
+Meta-ийн үндсэн баримт:
+https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow/
+
+OAuth тестүүд нь mock provider ашиглаж state/replay, app token, allowlist, session/logout-ийг шалгана. Бодит Meta App-аар нэвтрэх туршилтыг deployment болон credentials тохируулсны дараа хийнэ.
