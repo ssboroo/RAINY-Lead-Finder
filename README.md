@@ -1,119 +1,72 @@
 # RAINY Lead Finder
 
-Монгол интерфэйстэй, нэг байгууллагын lead хайлт ба хүсэлтийн самбар. Node.js 24, SQLite, нэмэлт npm dependency байхгүй.
+Монгол хэлтэй Facebook public-post discovery + CRM + subscription SaaS. Node.js 24, SQLite WAL, native JavaScript, SSE. Runtime npm dependency байхгүй.
+
+Хэрэглэгч хайх үгээ бичиж нийтийн хайлтын индекст байгаа Facebook постуудыг олно. Эх постыг нээгээд Facebook дээр өөрөө харилцана. Page холбох, групп бүртгэх шаардлагагүй.
 
 ## Ажиллуулах
 
-1. `.env.example`-ийг `.env` болгож хуулна.
-2. `APP_PASSWORD`-ийг 16-аас урт санамсаргүй нууц үгээр солино.
-3. `BRAVE_SEARCH_API_KEY` тохируулна (автомат хайлт ашиглах бол).
-4. `npm start`, дараа нь http://localhost:3000 нээнэ. Нэвтрэх нэр `admin`.
-5. Facebook хайлт → **Одоо хайж lead цуглуулах** дарна. Дараа нь хүсэлтийн самбараас шалгаж, хариу бэлтгэнэ.
+1. Node 24+ суулгана. `.env.example`-ийг `.env` болгож хуулна.
+2. `APP_PASSWORD`-ийг 16+ тэмдэгттэй хүчтэй нууц үгээр тохируулна.
+3. `SETTINGS_ENCRYPTION_KEY`-д 32-byte random key-ийн 64 hex тэмдэгтийг серверийн secret variable-аар өгнө. Үүсгэх: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+4. `PUBLIC_BASE_URL`-д deployment-ийн яг HTTPS origin өгнө. `DATA_DIR=/data`, persistent volume, нэг replica ашиглана.
+5. `npm ci --ignore-scripts`, `npm start`. Local development: http://localhost:3000.
+6. `/login`-д `admin` + `APP_PASSWORD`-оор нэвтэрнэ. **Админ удирдлага** дотроос API, банк, багцуудаа тохируулна.
 
-`SEARCH_INTERVAL_MINUTES=30` бол ажиллаж буй сервер 30 минут тутам хайна. Анхдагч утга 0, унтраалттай. Тохируулсан хайлтын гүнээс хамаарч 10 / 40 / 100 хүртэл API хүсэлт илгээнэ; төлбөртэй API хэрэглээ үүсэж болно. Давхар ажиллахгүй, хайлтууд 60 секундийн зайтай. Алдаа болон хамгийн сүүлийн үр дүнг хадгална. Сервер унтарсан үед хуваарь ажиллахгүй.
+Dockerfile нь Railway зэрэг Node/container hosting-д зориулсан. Healthcheck `/health`. Volume-гүй redeploy хийвэл өгөгдөл алдагдана. Production орчинд `NODE_ENV=production` болон HTTPS хэрэглэнэ. Production Basic auth анхдагчаар хаалттай; admin формын session ашиглана. Тусгай API automation-д `ADMIN_BASIC_AUTH=true`-г сервер дээр ил тод тохируулж болно.
 
-## Юу хийдэг
+## Админ тохиргоо
 
-- Brave Search Web API-аар `site:facebook.com` хайлт хийнэ; нийтийн индекст байгаа постын гарчиг, snippet-ийг авна.
-- 1 цаг–30 хоногийн сонголтод тохирох freshness шүүлт ашиглана. Энэ нь постын бодит нийтлэгдсэн огнооны баталгаа биш.
-- Постын холбоосыг шалгаж, tracking параметрийг цэвэрлэн, давхардлыг арилгана.
-- Түлхүүр үг болон хасах үгээр шүүнэ. Оноо нь дүрэмд суурилна; AI үнэлгээ биш.
-- SQLite хадгалалт, хүсэлтийн төлөв, Монгол хариуны засварлах ноорог, CSV/JSON экспорт болон сэргээх.
-- Бусдын постод хариугаа хуулж, эх постыг нээн, өөрөө нийтэлнэ.
+UI-аас Brave Search API түлхүүр, Facebook App ID/Secret, Graph API version, app-scoped Facebook allowlist, public signup, public origin, банк/данс/эзэмшигч, багцын үнэ/квот/хугацаа тохируулна. Brave холболтын шалгах товч нь 1 бодит API хүсэлт илгээнэ.
 
-## Хязгаар
+API secret-үүд `SETTINGS_ENCRYPTION_KEY`-ээр AES-256-GCM шифрлэгдэнэ. Secret утгуудыг GET API буцаахгүй. Хоосон secret талбар нь хуучин утгыг хадгална. DB override нь env-ээс давуу; `/api/admin/settings` PUT дотор `clear:true` өгвөл override устаж env утга дахин хэрэглэгдэнэ. Encryption key болон bootstrap админ нууц үгийг UI-аас солихгүй. Encryption key-гээ алдвал хадгалсан API secret-ийг сэргээх боломжгүй.
 
-Facebook нэвтрэлт, хаалттай групп унших, Facebook даяар бүрэн хайх, хувийн аккаунтаар автомат comment бичих холболт **байхгүй**. Нийтийн хайлтын индекс бүх постыг хамрахгүй; үр дүн хоосон байж болно. Lead нь хайлтын snippet бөгөөд бүтэн пост, зохиогчийн баталгаатай мэдээлэл биш. Meta Page-ийн comment API нь дурын групп дээр хувийн аккаунтаар бичих эрх олгохгүй.
+## Бүртгэл ба тусгаарлалт
 
-Энэ нь нэг байгууллагын MVP. SaaS төлбөр, tenant isolation, олон хэрэглэгчийн эрх, email нэвтрэлт хараахан байхгүй. Хүсэлтийн өгөгдлийг localStorage-д хадгалахгүй. Хоёр таб зэрэг засахад revision зөрчлийг 409 алдаагаар мэдэгдэж, шинэ өгөгдлийг чимээгүй дарж бичихээс хамгаална. Зөрчил гарвал JSON нөөц татаж, серверийн хувилбарыг шинэчлэн, өөрчлөлтөө дахин нэгтгэнэ. Нийтэд нээхдээ HTTPS заавал ашиглана.
+Имэйл+нууц үгээр бүртгүүлнэ. Password нь salted scrypt N=32768 hash, session нь серверт хадгалагдаж HttpOnly/SameSite cookie хэрэглэнэ. Нууц үг өөрчлөхөд бүх local session хаагдана. Админ хүсэлтийг шалгаад түр нууц үг оноож, local/Facebook хэрэглэгчийн хандалтыг хааж болно. SMTP email verification/reset-link үйлчилгээ одоогоор холбогдоогүй.
 
-## Railway
+AsyncLocalStorage дахь server-authenticated tenant context-оор хэрэглэгч бүрийн state, revision, хайлтын явц/түүх, activity, SSE тусгаарлагдана. Tenant ID-г body/URL-оос авахгүй. Хуучин shared workspace болон хуучин activity нь зөвхөн admin-д үлдэнэ. Team invitation / нэг байгууллагын олон гишүүн хараахан нэмээгүй.
 
-Репог холбоод Dockerfile-оор deploy хийнэ. `APP_PASSWORD`, `BRAVE_SEARCH_API_KEY`, `DATA_DIR=/data` тохируулна. `/data` дээр persistent volume холбоно. Healthcheck `/health`. Нэг replica ажиллуулна (SQLite ба scheduler). Volume-гүй redeploy хийвэл өгөгдөл алдагдана. Нөөцийг JSON-оор татаж болно.
+Facebook Login ашиглах бол App ID, Secret, одоо дэмжигдэж буй `vNN.0` Graph хувилбар, яг HTTPS origin тохируулна. Meta Dashboard-ийн Valid OAuth Redirect URI: `https://your-domain/auth/facebook/callback`. `FACEBOOK_PUBLIC_SIGNUP=false` үед app-scoped allowed ID-ууд л нэвтэрнэ; true бол public login зөвшөөрнө. Meta-ийн app mode/review шаардлагыг бодит dashboard дээр гүйцээнэ. Token-ийг server-side баталгаажуулж, хадгалахгүй. Facebook Login нь дурын постод comment бичих/хаалттай групп унших permission биш.
 
-## Шалгалт
+## Subscription ба төлбөр
 
-`npm test`; `node --check server.mjs`; `node --check public/app.js`; `node --check public/app.js`.
+Хэрэглэгч багц сонгоход snapshot үнэ, квот, хугацаатай нэхэмжлэх үүснэ. Банкны шилжүүлэг хийж лавлагаагаа илгээнэ. Админ банкны хуулгатай **гараар** тулгаж батална. Админы банкнаас шалгасан лавлагаа давтагдашгүй; нэг нэхэмжлэхийг хоёр удаа идэвхжүүлэхгүй. Хэрэглэгч өөрийн payment status эсвэл квотыг өөрчилж чадахгүй.
 
-Brave API: https://api-dashboard.search.brave.com/app/documentation/web-search/get-started
+Эхний багцууд нь админ өөрчлөх **санал**: Starter ₮29000/100 API хүсэлт, Pro ₮79000/500, Business ₮149000/1500, 30 хоног. Зардал/ашгаа бодитоор тооцож үнэ, квотыг өөрчилнө. Нэг API хүсэлт нэг lead гэсэн үг биш. Хайлтын нийлүүлэгч рүү илгээх бүрд сервер квотыг атомикаар хасна; expiry/quota дуусвал шинэ хүсэлт зогсоно. API алдаатай хариу ч нийлүүлэгч рүү илгээсэн хүсэлт тул тоологдоно.
 
-## CRM ажлын урсгал
+Шинэ багц батлах үед хугацаа шинээр эхэлж, квот шинэчлэгдэнэ; хуучин үлдэгдэл шилжихгүй. Автомат сарын суутгал, QPay/Wire.mn/card API, webhook payment verification **холбогдоогүй**. Supported payment method: admin-reviewed bank transfer. Онлайн төлбөр шууд баталгааждаг мэт UI байхгүй.
 
-Тойм самбар дээр идэвхтэй хүсэлт, хугацаа болсон ажил, захиалга, бүртгэсэн борлуулалтын дүн харагдана. Хүсэлт бүр дээр эрэмбэ, тэмдэглэл, дараа холбогдох өдөр, боломжит үнийн дүн, архив нэмсэн. Огнооны хяналтыг Asia/Ulaanbaatar бүсээр хийнэ. Борлуулалтын самбарын карт дээр дарж төлөв шинэчилнэ. Олон хүсэлтийг сонгон архивлаж, эрэмбэ/төлөв/текстээр шүүж, CSV экспорт хийж болно. Хайлтын сүүлийн 50 ажиллагааны үр дүн, алдааг хадгална. Хугацаа сануулах нь зөвхөн самбар дээр харагдана; email эсвэл push мэдэгдэл биш.
+## Гүн хайлт
 
-## Facebook-ээр нэвтрэх
+1/6/24 цаг, 3/7/30 хоногийн сонголт. Brave Web Search `pd/pw/pm/custom range`, кирилл/латин хувилбар, extra snippets, pagination ашиглана. Quick: 10 хүсэлт/1 хуудас; Deep: 40/3; Maximum: 100/10. Хуудас бүр 20 хүртэл үр дүн. Энэ нь дээд хязгаар, lead олдох баталгаа биш.
 
-`/login` хуудас дээр Facebook болон админ нэвтрэлттэй. Facebook нэвтрэлт дараах environment тохиргоонууд бүрэн үед идэвхжинэ:
+1–6 цагийн сонголт нь `pd` API үр дүнг нийлүүлэгчийн өгсөн цагтай metadata-аар давхар шүүнэ. Огноогүй үр дүн оруулах эсэхээ сонгоно. Нийлүүлэгчийн огноо нь Facebook нийтэлсэн цагийн баталгаа биш. Индексжээгүй болон хаалттай пост олдохгүй.
 
-- `PUBLIC_BASE_URL=https://your-domain.example` — path-гүй, яг production origin.
-- `FACEBOOK_APP_ID` болон `FACEBOOK_APP_SECRET` — Meta app-ын утгууд. Secret-ийг зөвхөн серверийн secret variable-д хадгална.
-- `META_GRAPH_VERSION` — тухайн Meta App dashboard-аас одоо дэмжигдэж буй хувилбарыг сонгож `vNN.0` хэлбэрээр өгнө. Жишээн дэх NN нь бодит хувилбар биш.
-- `FACEBOOK_ALLOWED_IDS` — энэ аппын app-scoped Facebook user ID-ууд, таслалаар тусгаарлана. Энэ нь нэг байгууллагын shared workspace тул дурын Facebook хэрэглэгчийг оруулахгүй. ID-г Meta-ийн тухайн app-аар авсан user token-ий `/me` үр дүнгээс админ авна.
+Хайлт background ажиллаж, олдсон үр дүнг хуудас бүрээр хадгална. Зогсоож болно. Request timeout 20 секунд, хүсэлтийн зай 1.1 секунд. 401/402/403/429 дээр зогсоно; өмнө хадгалсан үр дүн үлдэнэ. Давхардсан mobile/desktop Facebook URL-ийг нэгтгэнэ. Нэг хэрэглэгчид 1, серверт нийт 3 зэрэг хайлт. Scheduler нь одоогоор зөвхөн admin workspace-д үйлчилнэ.
 
-Meta Dashboard → тухайн аппын Facebook Login web тохиргоонд **Valid OAuth Redirect URI**-г `https://your-domain.example/auth/facebook/callback` гэж яг тааруулна. App domain болон Website URL-ийг тохируулна. Public profile нэвтрэлт ашиглана; Page удирдах эсвэл comment бичих permission хүсэхгүй. Development горимд аппын зөвшөөрөгдсөн тест хэрэглэгчээр туршина. Нийтэд нээхэд Meta-аас шаардсан app mode, review, privacy/data-deletion нөхцөлүүдийг тухайн dashboard-ын шаардлагаар гүйцээнэ.
+## CRM, өгөгдөл
 
-Authorization code солилцоо сервер дээр хийгдэнэ. Нэг удаагийн OAuth state, HttpOnly/SameSite cookie, app ID болон user ID token баталгаажуулалт, app-secret proof, ID allowlist, 8 цагийн серверийн session, logout нэмсэн. Facebook access token хадгалахгүй. Нууц үгийн форм rate limit-тэй. Админ `APP_PASSWORD` нөөц нэвтрэлт хэвээр. Basic API auth нийцтэй байдлаар хадгалагдсан; браузерийн форм нь cookie session хэрэглэнэ.
+Төлөв, эрэмбэ, тэмдэглэл, холбогдох өдөр, үнийн дүн, favorite, архив, CSV/JSON, засварлах хариуны 3 загвар. Buyer/seller/mixed/mention ангилал нь тайлбартай дүрэм, AI биш. Орлого нь гараар бүртгэсэн дүн, төлбөрийн баталгаажуулалт биш. Огнооны ажлын тооцоо Asia/Ulaanbaatar.
 
-`/privacy`, `/data-deletion` хуудсууд тайлбарын эх загвар агуулна. Нийтэд нээхээс өмнө операторын бодит холбоо барих суваг болон устгалын үйл явцыг гүйцээнэ. `sessions` хүснэгтээс тухайн Facebook ID бүхий session-уудыг админ устгаж хандалтыг цуцална; allowlist-ээс мөн хасна. Апп устгасан Facebook webhook автомат боловсруулах холболт одоогоор байхгүй.
+Хайлтын гарчиг нь Facebook хүний нэр биш. Нэр ирээгүй үед баталгаажаагүй гэж харуулна. Эх постын нэр/групп/бүтэн текстийг эрхтэй эх сурвалжаас импортолж болно:
 
-Meta-ийн үндсэн баримт:
-https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow/
+`POST /api/import/posts` → `{"posts":[{"url":"https://facebook.com/groups/123/posts/456","authorName":"Нэр","groupName":"Группийн нэр","text":"Эх текст\nдараагийн мөр","publishedAt":"2026-10-19T12:00:00Z"}]}`
 
-OAuth тестүүд нь mock provider ашиглаж state/replay, app token, allowlist, session/logout-ийг шалгана. Бодит Meta App-аар нэвтрэх туршилтыг deployment болон credentials тохируулсны дараа хийнэ.
+`publishedAt` optional, user-supplied timestamp. Нэг пост 100000 тэмдэгт, batch 100, нийт payload 5MB хүртэл. Unicode, мөр, зайг өөрчлөхгүй; HTML-ийг textContent-оор гаргана. Давхардсан холбоосыг шинэчлэхдээ CRM тэмдэглэл/төлөв хадгална. Facebook-ээс бие даан баталгаажуулсан гэж тэмдэглэхгүй.
 
-## Судалсан бүтээгдэхүүн ба шинэ урсгал
+SSE нь authenticated tenant-specific notification дамжуулна. Dirty form/dialog-ийг шинэ revision дарж өөрчлөхгүй; хадгалах үед revision conflict шалгана. Activity нь серверийн transaction дотор үүсэж, тухайн tenant-ийн сүүлийн 20000 event хадгална. Notes/body/reply text-ийн бүтэн хуулбарыг audit-д хадгалахгүй. Энэ нь tamper-proof compliance log биш.
 
-Devi AI (https://ddevi.com/en/features), RedReplier (https://redreplier.com/usages/facebook-group-lead-generation), Syften (https://syften.com/documentation) сайтуудын нийтэд тайлбарласан keyword → classify → review → reply урсгалаас санаа авсан. Тэдний код, брэндийг хуулбарлаагүй. Эдгээр нийлүүлэгчтэй API интеграц хийгдээгүй бөгөөд тэдний зарласан Facebook хамрах хүрээг энэ MVP дэмждэг гэж үзэхгүй.
+JSON backup нь workspace л агуулна. Бүрэн database backup-д accounts, invoices, subscriptions, sessions, activity, encrypted settings, encryption key тусдаа нөөц хэрэгтэй. Нөөц хадгалах/сэргээх, хэрэглэгчийн устгалын operational процессыг оператор хариуцна. `/privacy`, `/data-deletion` хуудасны бодит операторын холбоо барих мэдээлэл/хадгалах бодлогыг нийтэд нээхээс өмнө гүйцээнэ.
 
-- Хайлт хэсэгт 20 хүртэл групп/Page эх сурвалж нэмэх, түр зогсоох, хасах. Эх сурвалж байвал зөвхөн идэвхтэй эх сурвалжийн URL хамрах хүрээнд нийтийн индексээс хайна; бүгд унтраалттай бол хайлт зогсоно. Эх сурвалж нэмээгүй бол Facebook-ийн нийтийн индекс даяар хайна.
-- Нэг ажилд 10 / 40 / 100 хүртэл API хүсэлт; 50 хүртэл үг ба эх сурвалж, үгийн хувилбаруудын хослолыг ээлжлэн ашиглана. Энэ хязгаараас шалтгаалан бүх хослол нэг удаад хамрагдахгүй. Нийтийн индекс нь бүтэн группийн шууд мониторинг биш.
-- Монгол/латин/англи хүсэлтийн хэллэгээр buyer / seller / mixed / mention гэж дүрмээр ангилна. Шалтгаан болон оноо харагдана; AI биш, алдаатай ангиллыг хүн шалгана.
-- Хадгалсан хүсэлт, ангиллаар шүүх, эх пост шалгасан тэмдэглэгээ.
-- Тодруулах, товч танилцуулах, туслах зөвлөгөө гэсэн 3 хариуны загвар; засварласан нооргийг серверт хадгална. Автомат нийтлэл байхгүй.
+## Шалгах
 
-## Гүн хайлт ба шинэ огноо
+`npm test`, `node --check server.mjs`, `node --check public/app.js`, `npm audit --omit=dev`.
 
-Хайлт background ажилладаг: `/api/discover` нь 202 хариулаад, хөтөч `/api/status`-аас 3 секунд тутам явц авна. Хуудсыг хаасан ч сервер ажиллаж байгаа үед үргэлжилнэ. `/api/search/cancel` зогсооно. Сервер restart бол өмнөх ажил interrupted болж тэмдэглэгдэнэ; хуудас бүрийн олдсон lead-үүд хадгалагдсан байна.
+Unit/integration coverage: tenant state/activity/invoice isolation, admin authorization, quota/expiry, duplicate paid bank reference, encryption/masking, password/session revocation, OAuth state/token, SSE, date/pagination/cancel. Бодит browser/device QA, deployment, Meta Login, live Brave API болон банкны operational баталгаажуулалт хийгдээгүй. Эдгээрийг production readiness-ийн бүрэн баталгаа гэж үзэхгүй.
 
-- 1 цаг / 6 цаг / 24 цаг / 3 хоног / 7 хоног / 30 хоног сонгоно.
-- Brave-ийн `pd`, `pw`, `pm`, custom date range ашиглаж, нийлүүлэгчийн `page_age` / `age`-ийг давхар шалгана. 1–6 цагийн шүүлт нь тусгай цагийн API хайлт биш: 24 цагийн API үр дүнг нийлүүлэгчийн өгсөн цагийн мэдээллээр дотроос нь шүүнэ.
-- Огноогүй мэдээллийг оруулах эсэхээ сонгоно. Унтраасан үед цагийн нарийвчлалгүй 1–6 цагийн үр дүнг хасна. Огноогүй эсвэл өдрийн нарийвчлалтай үр дүнг шинэ цагтай пост гэж таамаглахгүй.
-- Кирилл/латин хэллэгийн хязгаарлагдмал dictionary хувилбар, extra snippets, хуудас дамжих offset, `more_results_available` хяналт ашиглана.
-- Шуурхай: 10 хүсэлт / 1 хуудас; Гүн: 40 / 3; Хамгийн гүн: 100 / 10. Нэг хуудсанд 20 хүртэл үр дүн. Тоо нь боломжит дээд хязгаар, олдох lead-ийн баталгаа биш. Дараагийн ажил хайлтын асуулгын cursor-оос эргэлдэж хамралтаа өргөжүүлнэ; өмнөх pagination offset-ийг сэргээхгүй.
-- 1.1 секундийн хүсэлтийн зай, 20 секундийн timeout. 401/403/429 ирвэл зогсож алдааг харуулна; өмнөх олдсон үр дүн үлдэнэ. Автомат retry үгүй.
-- Эх Facebook постын холбоос, олдсон огноо, нийлүүлэгчийн тайлагнасан огноо, огнооны нарийвчлал, олсон хайлтын үг хадгална. m.facebook.com ба www.facebook.com давхардлыг нэгтгэнэ.
-- CSV экспортод эх холбоос, олдсон огноо, нийлүүлэгчийн огноо, хайлтын үг нэмэгдсэн.
+## Эх сурвалж
 
-**Нийлүүлэгчийн огноо нь Facebook нийтэлсэн цагийг батлахгүй.** Саяхны пост индексжээгүй бол энэ систем олохгүй. Хаалттай групп эсвэл Facebook-ийн шууд feed холболт нэмээгүй. Цагийн баталгааг эх пост дээр хүн шалгана. Бодит Brave API түлхүүргүй орчинд unit/integration тестүүд нь mock хайлтын хариу ашигладаг.
-
-## Facebook нэр, группийн нэр, эх текст
-
-Хайлтын title нь Facebook хүний нэр биш. Шинэ хайлтын үр дүнд `searchTitle` тусад нь хадгалж, жинхэнэ нэр ирээгүй бол “Нэр баталгаажаагүй” гэж харуулна. Өмнөх хувилбарын хайлтын title-ийг мөн нэр гэж үзэхгүй. Таны өөрөө оноосон source нэр нь Facebook группийн албан ёсны нэр гэж тооцогдохгүй.
-
-Эх постын мэдээлэл экспортлох эрхтэй эх сурвалжаас `POST /api/import/posts`-д `{"posts":[{"url":"https://facebook.com/groups/123/posts/456","authorName":"Эх дээрх нэр","groupName":"Эх дээрх группийн нэр","text":"Эх текст\\nдараагийн мөр","publishedAt":"2026-10-19T12:00:00Z"}]}` илгээнэ. Session/админ authentication шаардлагатай. Тохиргоо хэсгийн JSON файл импортоор мөн ашиглаж болно. `publishedAt` optional бөгөөд supplied timestamp, Facebook баталгаажуулалт биш.
-
-Текстийн үг, тэмдэг, мөр, emoji болон зайг trim эсвэл HTML transformation хийхгүй хадгална. DOM-д textContent-оор гаргаж HTML ажиллуулахгүй. Нэг постын текст 100000 тэмдэгт хүртэл, нэг batch 100 хүртэл пост, HTTP payload 5MB хүртэл. Давхардсан URL байвал нэр/эх текстийг шинэчилж CRM тэмдэглэл, төлөв, ID-г хадгална. Импортын metadata нь `user-supplied`; Facebook-ээс бие даан баталгаажуулсан гэж тэмдэглэхгүй.
-
-Brave хайлт нь бүтэн пост, Facebook author болон group name-ийг баталгаатай буцаадаг холболт биш. Энэ хувилбар тэр мэдээллийг автоматаар бүрэн татдаггүй. Эх посттой тулгаж дэлгэрэнгүй хэсгээс нөхөх эсвэл эрхтэй экспорт/API нийлүүлэгчээс импортлох шаардлагатай.
-
-## Интерфэйс v0.8
-
-Нэгдсэн navy/cobalt design: desktop sidebar, responsive доод mobile navigation, SVG navigation icons, статусын өнгө, уншигдах карт, хоёр түвшний шүүлт, нягт/дэлгэрэнгүй харагдац, responsive login. Товч гар: `/` — хүсэлт хайлт руу, `n` — шинэ хүсэлт, `Ctrl/Cmd+Enter` — нээлттэй форм хадгалах. Input дээр бичиж байхад `/`, `n` shortcut ажиллахгүй. Түргэн шүүлт нь бүх хүсэлт / худалдан авах хүсэлт / хадгалсан / шинэ гэсэн сонголттой. Reduced-motion тохиргоог хүндэтгэнэ. Харагдах байдлыг бодит браузерт баталгаажуулаагүй.
-
-## Шууд шинэчлэлт, тайлан, өөрчлөлтийн түүх (v0.9)
-
-- Authenticated `/api/events` нь SSE/EventSource-оор revision болон хайлтын явцын жижиг notification илгээнэ. Facebook token, постын бүтэн текстийг stream-ээр дамжуулахгүй. Хөтөч шаардлагатай өгөгдлөө authenticated API-аас дахин авна. Хайлтын явц SSE ажиллаж байх үед polling хийхгүй; тасарвал polling руу буцна.
-- Текст засаж буй форм эсвэл нээлттэй lead dialog байхад шинэ revision автоматаар дээрээс нь дарж орохгүй. Шинэчлэл байгаа тухай сануулж, хадгалах үед revision conflict-ийг хянана. Form-оос гарах / хуудсыг хаахад хадгалаагүй өөрчлөлтийн сануулга гарна.
-- SQLite WAL болон 5 секундийн busy timeout. Нэг replica, persistent volume-ийн шаардлага хэвээр; энэ нь олон серверийн distributed database биш.
-- Серверийн activity хүснэгт lead үүсгэлт, устгал, өөрчлөгдсөн талбарын нэр, төлөв, actor, цагийг state-тэй нэг transaction дотор хадгална. Notes/body/replyDraft-ийн хуучин болон шинэ текстийг audit-д давхар хадгалахгүй. Сүүлийн 20000 event хадгална; энэ нь tamper-proof compliance audit биш. `/api/activity?lead=<id>&before=<cursor>&limit=30`-оор уншина.
-- `/api/insights`: архивлаагүй lead-ийн эх сурвалж, хүсэлтийн төрөл, борлуулалтын төлөв, дүн, хувийн тооцоо. Хугацааны тооцоо Asia/Ulaanbaatar. Орлого нь гараар бүртгэсэн дүн; төлбөрийн баталгаажуулалт биш.
-- SSE холболтын дээд хязгаар 30; 20 секунд тутам heartbeat-аар нэвтрэх эрхийг дахин шалгана. Session дууссан / logout хийсэн / Facebook allowlist-ээс хассан тохиолдолд stream хаагдана. Серверийн env-ийн allowlist өөрчилсөн бол redeploy/restart шаардлагатай. Одоогийн нээлттэй session ч дараагийн API хүсэлт дээр allowlist шалгуулна.
-- JSON backup-д үндсэн workspace орно; activity/session хүснэгт орохгүй. Бүрэн сэргээхэд SQLite volume-ийн тусдаа нөөц шаардлагатай.
-
-Нэмсэн тестүүд: audit diff болон хувийн текстийн хамгаалалт, Улаанбаатарын өдрийн зааг, эх сурвалжийн тооцоо, SSE capacity/cleanup/revocation, activity API actor, allowlist-аас хассан session.
-
-## Public post search үндсэн урсгал (v0.10)
-
-Үндсэн хуудас нь хэрэглэгч түлхүүр үгээ бичээд Facebook-ийн нийтийн пост хайх хэсэг болсон. `/api/discover` болон `/api/search/plan`-д `query` параметр өгвөл тухайн хайлт хадгалсан words-оос тусдаа ажиллана. Бүх хайлт `site:facebook.com` нийтийн индексийг ашиглаж, өмнөх saved Page/group scope-уудыг хэрэглэхгүй. Page холболт болон групп бүртгэл шаардахгүй. Группийн эх сурвалж тохируулах UI үндсэн урсгалаас авсан.
-
-Үр дүнг query/searchRoot болон текстийн таарцаар харуулж, эх пост руу оруулна. Хэрэглэгч өөрөө Facebook дээр comment бичих эсвэл постын эзний зөвшөөрсөн сувгаар холбогдоно. Нийтийн индекс бүх постыг хамрахгүй. Search API credential шаардах хэвээр. Энэ нь нэг байгууллагын shared workspace; тусдаа tenant/хэрэглэгчийн хувийн lead сан хараахан биш.
+- https://api-dashboard.search.brave.com/app/documentation/web-search/get-started
+- https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow/
+- Урсгалын судалгааны жишээ: Devi AI, RedReplier, Syften. Тэдгээртэй API интеграц хийгдээгүй.
