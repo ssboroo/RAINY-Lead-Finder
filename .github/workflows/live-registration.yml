@@ -1,0 +1,19 @@
+name: Live registration check
+on:
+  workflow_dispatch:
+  push:
+    branches: [fix/signup-registration]
+    paths: ['scripts/check-live-registration.mjs', '.github/workflows/live-registration.yml']
+permissions:
+  contents: read
+jobs:
+  registration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node scripts/check-live-registration.mjs
+        env:
+          LIVE_BASE_URL: https://rainy-lead-finder-production.up.railway.app
