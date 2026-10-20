@@ -1,9 +1,6 @@
 name: Live registration check
 on:
   workflow_dispatch:
-  push:
-    branches: [fix/signup-registration]
-    paths: ['scripts/check-live-registration.mjs', '.github/workflows/live-registration.yml']
 permissions:
   contents: read
 jobs:

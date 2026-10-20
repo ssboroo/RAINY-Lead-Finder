@@ -33,3 +33,17 @@ test('QPay QR, safe bank link and callback-driven local status render correctly'
  await page.evaluate(()=>document.querySelector('[data-view="billing"]').click());await page.getByRole('button',{name:'QPay-аар төлөх'}).click();await expect(page.getByAltText('QPay төлбөрийн QR')).toBeVisible();await expect(page.getByRole('link',{name:'Банкны апп'})).toHaveAttribute('href','bank://pay/1');
  await page.getByRole('button',{name:'Төлбөрийн төлөв шинэчлэх'}).click();await expect(page.locator('#subscriptionstatus')).toContainText('Багц идэвхтэй');
 });
+
+test('duplicate signup error stays beside the form and offers login/reset recovery',async({page},testInfo)=>{
+ const email='duplicate-'+testInfo.project.name+'@example.com';
+ expect((await page.request.post('/auth/register',{data:{name:'Existing',email,password:'existing-password-123'}})).ok()).toBe(true);
+ await page.request.post('/auth/logout',{data:{}});
+ await page.goto('/login');await page.locator('#signupsection summary').click();await page.locator('#registername').fill('Duplicate');await page.locator('#registeremail').fill(email);await page.locator('#registerpassword').fill('different-password-123');await page.locator('#registerbutton').click();
+ await expect(page.locator('#registererror')).toBeVisible();await expect(page.locator('#registererror')).toContainText('бүртгэлтэй');await expect(page.locator('#registerrecovery')).toBeVisible();
+ await page.locator('#registersignin').click();await expect(page.locator('#username')).toHaveValue(email);await expect(page.locator('#password')).toBeFocused();
+ await page.locator('#registerreset').click();await expect(page.locator('#forgotemail')).toHaveValue(email);await expect(page.locator('#forgotemail')).toBeVisible();
+});
+test('closed signup is communicated before submitting the form',async({page})=>{
+ await page.route('**/auth/config',route=>route.fulfill({json:{facebookEnabled:false,signupEnabled:false}}));
+ await page.goto('/login');await page.locator('#signupsection summary').click();await expect(page.locator('#signupnotice')).toContainText('бүртгэл хаалттай');await expect(page.locator('#registerbutton')).toBeDisabled();
+});
