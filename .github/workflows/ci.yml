@@ -1,0 +1,37 @@
+name: CI
+on:
+  push:
+    branches: [main, 'feature/**', 'fix/**']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node scripts/check-syntax.mjs
+      - run: npm test
+      - run: npm audit --omit=dev
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npm install --prefix e2e --ignore-scripts --no-audit --no-fund
+      - run: cd e2e && npx playwright install --with-deps chromium
+      - run: cd e2e && npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure
+          path: e2e/test-results
+          retention-days: 7
