@@ -1,0 +1,2 @@
+import {readdirSync} from 'node:fs';import {join} from 'node:path';import {spawnSync} from 'node:child_process';
+function check(dir){for(const entry of readdirSync(dir,{withFileTypes:true})){if(['node_modules','.git','data','test-results'].includes(entry.name))continue;const path=join(dir,entry.name);if(entry.isDirectory())check(path);else if(/\.(mjs|js)$/.test(entry.name)){const r=spawnSync(process.execPath,['--check',path],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1)}}}check('.');
