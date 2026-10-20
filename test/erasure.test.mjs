@@ -15,3 +15,11 @@ test('erasure isolates tenants, revokes sessions/outbox, anonymizes paid invoice
  db.prepare('INSERT INTO accounts(id,email,name,password,created,disabled,email_verified) VALUES (?,?,?,?,?,0,0)').run(account.id,account.email,account.name,account.password,account.created);erasure.apply(ledger);assert.equal(saas.localEnabled(u.id),false);assert.throws(()=>erasure.erase('admin'));
  }finally{db.close()}
 });
+
+test('restore erasures remove old Facebook identities but preserve explicit registrations after deletion',()=>{
+ const db=new DatabaseSync(':memory:'),env={SETTINGS_ENCRYPTION_KEY:'c'.repeat(64)},saas=createSaaS({db,env}),mail=createMail({db,saas,env}),erasure=createErasure({db,mail});
+ try{saas.ensureIdentity({provider:'facebook',id:'123',name:'Old'});erasure.erase('facebook:123');const ledger=erasure.ledger();saas.ensureIdentity({provider:'facebook',id:'123',name:'New'});
+ db.prepare('UPDATE external_users SET created=? WHERE tenant=?').run(Date.parse(ledger[0].deleted_at)+1000,'facebook:123');erasure.apply(ledger);assert.equal(db.prepare('SELECT name FROM external_users').get().name,'New');
+ db.prepare('UPDATE external_users SET created=0').run();erasure.apply(ledger);assert.equal(db.prepare('SELECT count(*) AS n FROM external_users').get().n,0);
+ }finally{db.close()}
+});

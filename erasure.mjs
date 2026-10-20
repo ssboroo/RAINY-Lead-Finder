@@ -24,9 +24,9 @@ export function createErasure({db,mail}){
   }catch(error){db.exec('ROLLBACK');throw error}
  }
  function ledger(){return db.prepare('SELECT * FROM erasure_ledger ORDER BY deleted_at').all()}
- function apply(rows){if(!Array.isArray(rows)||rows.some(r=>!/^[a-f\d]{64}$/.test(r.tenant_hash)))throw Error('Устгалын жагсаалт буруу');const hashes=new Set(rows.map(r=>r.tenant_hash));
-  const tenants=[...db.prepare('SELECT id FROM accounts').all().map(r=>'local:'+r.id),...db.prepare('SELECT tenant FROM external_users').all().map(r=>r.tenant)];
-  for(const tenant of tenants)if(hashes.has(tenantHash(tenant)))erase(tenant);
+ function apply(rows){if(!Array.isArray(rows)||rows.some(r=>!/^[a-f\d]{64}$/.test(r.tenant_hash)||!Number.isFinite(Date.parse(r.deleted_at))))throw Error('Устгалын жагсаалт буруу');const hashes=new Map(rows.map(r=>[r.tenant_hash,Date.parse(r.deleted_at)]));
+  const tenants=[...db.prepare('SELECT id,created FROM accounts').all().map(r=>({tenant:'local:'+r.id,created:Date.parse(r.created)||0})),...db.prepare('SELECT tenant,created FROM external_users').all()];
+  for(const row of tenants){const deletedAt=hashes.get(tenantHash(row.tenant));if(deletedAt!==undefined&&row.created<=deletedAt)erase(row.tenant)}
   for(const row of rows)db.prepare('INSERT OR IGNORE INTO erasure_ledger VALUES (?,?)').run(row.tenant_hash,String(row.deleted_at||''));
  }
  return{erase,ledger,apply};
