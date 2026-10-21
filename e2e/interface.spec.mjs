@@ -31,3 +31,11 @@ test('login and main workspace meet core WCAG accessibility checks',async({page}
  }
  expect(failures).toEqual([]);
 });
+test('navigation requested while workspace loads is preserved',async({page})=>{
+ let releaseWorkspace;const gate=new Promise(resolve=>releaseWorkspace=resolve);
+ await page.route('**/api/workspace',async route=>{await gate;await route.continue()});
+ await page.goto('/login');await page.locator('#username').fill('admin');await page.locator('#password').fill('browser-test-password-123');await page.locator('#signin').click();
+ await expect(page.locator('#add')).toBeVisible();await page.waitForFunction(()=>typeof document.querySelector('[data-view="billing"]').onclick==='function');
+ await page.evaluate(()=>document.querySelector('[data-view="billing"]').click());releaseWorkspace();
+ await expect(page.locator('#billing')).toBeVisible();await expect(page).toHaveURL(/#billing$/);
+});
